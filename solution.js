@@ -70,7 +70,7 @@ DOWNSTAIRS = 1,
 FINDBLOCK = 2,
 BACKTRACK = 3,
 UPSTAIRS = 4,
-GRABGOLD = 5,
+GRABTHEGOLD = 5,
 goal = FINDTOWER;
 
 
@@ -80,7 +80,6 @@ this.turn = function(cell){
 	if (curDir == -2) {
 		return "drop";
 	}
-	
 	if (goal == FINDTOWER) {
 		if (firstTurn == true) {
 			this.createMap();			//need to create visited map
@@ -141,6 +140,12 @@ this.turn = function(cell){
 	}
 
 
+	if (goal == GRABTHEGOLD) {
+		console.log("Troll wins!");
+		return "left";
+	}
+
+
 
 
 	visitedMap[curX][curY] = true;
@@ -152,7 +157,7 @@ this.turn = function(cell){
 
 		//NOTE: if stack is empty: can't backtrack, just hit all 4 directions
 		prev = backtrackStack.pop();
-		console.log("stuck: " + prev);
+		// console.log("stuck: " + prev);
 		curDir = this.oppositeDir(prev);
 		backtracked = true;
 	}
@@ -190,7 +195,7 @@ this.createMap = function() {
 
 this.move = function(direction) {
 	if (backtracked == false) {
-		console.log("curX: " + curX + "curY: " + curY)
+		// console.log("curX: " + curX + "curY: " + curY)
 		backtrackStack.push(curDir);	//in case we need to backtrack (but don't add if we backtracked to get here)
 	}
 	else {	//no need to push to stack here
@@ -226,12 +231,11 @@ this.move = function(direction) {
 
 
 this.goodSpot = function(xPos, yPos, type) {		//checks if wall exists at spot or if we've visited it before
-	if (visitedMap[xPos][yPos] == true || xPos < 0 || xPos > 31
-		|| yPos < 0 || yPos > 31) {
+	if (xPos < 0 || xPos > 31 || yPos < 0 || 
+		yPos > 31 || visitedMap[xPos][yPos] == true) {
 		return false;
 	}
-	if (type == 1) {
-		console.log("wall!");
+	if (type == WALL) {
 		return false;
 	}
 	return true;
@@ -332,9 +336,13 @@ this.goDownStairs = function() {
 			return this.move(RIGHT);
 		case 1: 						//bottom of the stairs (our goal)
 			
+			//update location
+			curX = towerX;
+			curY = towerY + 1;
+
 			if (holdingBlock == true) {		//edge case: prev stair already on right level so block not placed
 				goal = UPSTAIRS;
-				return this.move(DOWN);	//throw away the turn (impossible to move to tower)
+				return "pickup";	//throw away the turn (already holding block)
 			}
 
 			goal = FINDBLOCK;
@@ -342,9 +350,7 @@ this.goDownStairs = function() {
 			this.createMap();
 
 			backtrackStack = Array();
-			//update location
-			curX = towerX;
-			curY = towerY + 1;
+
 			//we can go either right or up from this spot (random between 1 or 2)
 			curDir = (Math.random() * 2 >> 0) + 1;
 			return this.move(curDir);
@@ -356,20 +362,28 @@ this.goDownStairs = function() {
 
 this.goUpStairs = function(level) {
 	var curStair = this.getStair();
+
 	//check if this is the stair we are looking for
 	if (curStair == nextStair) {	
-		var tempStair = curStair;
-		var tempLevel = curLevel;
-		nextStair = curStair - 1;
+
+		var tempLevel = curLevel;	//save this value in case it gets changed
+		nextStair = curStair - 1;	//next location to create stair
+
 		if (nextStair == minStair - 1) {	//time to move onto next level
 			nextStair = 7;
 			curLevel += 1;	
 			minStair += 1;	//one less stair needs to be created on this level
 		}
-		goal = DOWNSTAIRS;	//next move is to go down stairs again
+
+		if (curLevel == 8)	{	//all done!
+			goal = GRABTHEGOLD;
+		}
+		else {
+			goal = DOWNSTAIRS;	//next move is to go down stairs again
+		}
 
 		//check if level already exists (would only happen with level 1)
-		if (level == curLevel) {
+		if (level == tempLevel) {
 			return "pickup";	//just waste the turn (impossible to pick up)
 		}
 		else {
@@ -378,6 +392,7 @@ this.goUpStairs = function(level) {
 		}
 	}
 
+	//not on right stair: we need to go up 
 	switch(curStair){
 		case 1:
 			return this.move(LEFT);
