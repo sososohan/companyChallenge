@@ -24,9 +24,8 @@ curX = 16,
 curY = 16,
 prev = -1,
 towerX = -1,
-towerY = -1,
-firstStairX = -1,	//location we will go to climb staircase
-firstStairY = -1;
+towerY = -1;
+
 
 
 //booleans
@@ -53,6 +52,9 @@ curDir = -1;
 
 // Replace this with your own wizardry
 this.turn = function(cell){
+	if (curDir == -2) {
+		return "drop";
+	}
 	
 	if (towerFound == false) {
 		if (firstTurn == true) {
@@ -81,19 +83,17 @@ this.turn = function(cell){
 			}
 			towerFound = true;
 
-			//right above tower->spot we will return to
-			firstStairX = towerX;
-			firstStairY = towerY + 1;
-			//recreate visited grid, not allowing visit of spots around towers
-			this.createMap();
-
-			return "drop";
+			downStairs = true;	//we want to get back to first stair 
 		}
 		if (curDir == -1) {
 			return "drop";
 		}
 
 		visitedMap[curX][curY] = true;
+	}
+
+	if (downStairs == true) {	//need to get to stair 1
+		return this.goDownStairs();
 	}
 
 	//find a direction that works
@@ -144,7 +144,11 @@ this.move = function(direction) {
 		console.log("curX: " + curX + "curY: " + curY)
 		backtrackStack.push(curDir);	//in case we need to backtrack (but don't add if we backtracked to get here)
 	}
-	backtracked = false;	//reset boolean
+	else {	//no need to push to stack here
+		backtracked = false;
+	}
+
+
 	if (direction == LEFT) {
 		curX --;
 		return "left";
@@ -235,7 +239,7 @@ this.oppositeDir = function(dir) {
 
 
 this.getStair = function() {	//figure out which stair we're on or if we're not on one
-	if (curX == towerX && curY = towerY + 1) {
+	if (curX == towerX && curY == towerY + 1) {
 		return 1;
 	}
 	else if (curX == towerX - 1 && curY == towerY + 1) {
@@ -260,17 +264,36 @@ this.getStair = function() {	//figure out which stair we're on or if we're not o
 		return -1;
 	}
 }
+
+this.goDownStairs = function() {
+	switch(this.getStair()){
+		case 7:
+			return this.move(DOWN);
+		case 6:
+			return this.move(LEFT);
+		case 5:
+			return this.move(LEFT);
+		case 4: 
+			return this.move(UP);
+		case 3:
+			return this.move(UP);
+		case 2:
+			return this.move(RIGHT);
+		case 1: 						//bottom of the stairs (our goal)
+			downStairs = false;
+			//recreate visited grid and backtrack Array, not allowing visit of spots around towers
+			this.createMap();
+			this.backtrackStack = Array();
+			//we can go either right or up from this spot (random between 1 or 2)
+			curDir = (Math.random() * 2 >> 0) + 1;
+			return this.move(curDir);
+		default:
+			console.log("Not on stairs: shouldn't happen");
+			return this.move(-1);
+	}
+}
  
 }
-
-// visitedMap[towerX][towerY + 1] = true; //stair 1
-// 		visitedMap[towerX - 1][towerY + 1] = true; //stair 2...and so on below
-// 		visitedMap[towerX - 1][towerY] = true;
-// 		visitedMap[towerX - 1][towerY - 1] = true;
-// 		visitedMap[towerX][towerY - 1] = true;
-// 		visitedMap[towerX + 1][towerY - 1] = true;
-// 		visitedMap[towerX + 1][towerY] = true;	//stair 7
-
 
 
 
