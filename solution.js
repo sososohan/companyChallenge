@@ -4,6 +4,10 @@
 *	2. the tower is always 8 stories high and is not within 2 spots of any walls (on any side)
 * 	3. any spots spawned with a block on the beginning will only be 1 story high
 *	4. there are always enough blocks available to climb the tower
+*
+*	Optimization TODO:
+	1. instead of going one way on wall, go random way (create array & generate random value)
+	2. possibly mod so grid 16 by 16 instead of 32 by 32
 */
 
 //
@@ -48,6 +52,16 @@ DOWN = 3,
 STUCK = 4,
 curDir = -1;
 
+//GOAL
+var
+FINDTOWER = 0,
+DOWNSTAIRS = 1,
+FINDBLOCK = 2,
+BACKTRACK = 3,
+UPSTAIRS = 4,
+GRABGOLD = 5,
+goal = FINDTOWER;
+
 
 
 // Replace this with your own wizardry
@@ -56,7 +70,7 @@ this.turn = function(cell){
 		return "drop";
 	}
 	
-	if (towerFound == false) {
+	if (goal == FINDTOWER) {
 		if (firstTurn == true) {
 			this.createMap();			//need to create visited map
 			firstTurn = false;
@@ -81,20 +95,27 @@ this.turn = function(cell){
 				towerX = curX;
 				towerY = curY + 1;
 			}
-			towerFound = true;
-
-			downStairs = true;	//we want to get back to first stair 
-		}
-		if (curDir == -1) {
-			return "drop";
+			goal = DOWNSTAIRS;
 		}
 
-		visitedMap[curX][curY] = true;
 	}
 
-	if (downStairs == true) {	//need to get to stair 1
+	if (goal == DOWNSTAIRS) {	//need to get to stair 1
 		return this.goDownStairs();
 	}
+
+	if (goal == FINDBLOCK) {	//check if we've found a square
+		if (cell.type == BLOCK) {
+			goal = BACKTRACK;
+			curDir = -2;
+			return "pickup";
+		}
+	}
+
+
+
+
+	visitedMap[curX][curY] = true;
 
 	//find a direction that works
 	curDir = this.checkDir(cell, curDir, 0);
@@ -176,7 +197,8 @@ this.move = function(direction) {
 
 
 this.goodSpot = function(xPos, yPos, type) {		//checks if wall exists at spot or if we've visited it before
-	if (visitedMap[xPos][yPos] == true) {
+	if (visitedMap[xPos][yPos] == true || xPos < 0 || xPos > 31
+		|| yPos < 0 || yPos > 31) {
 		return false;
 	}
 	if (type == 1) {
@@ -280,12 +302,17 @@ this.goDownStairs = function() {
 		case 2:
 			return this.move(RIGHT);
 		case 1: 						//bottom of the stairs (our goal)
-			downStairs = false;
+			goal = FINDBLOCK;
 			//recreate visited grid and backtrack Array, not allowing visit of spots around towers
 			this.createMap();
 			this.backtrackStack = Array();
+
+			//update location
+			curX = towerX;
+			curY = towerY + 1;
 			//we can go either right or up from this spot (random between 1 or 2)
 			curDir = (Math.random() * 2 >> 0) + 1;
+
 			return this.move(curDir);
 		default:
 			console.log("Not on stairs: shouldn't happen");
