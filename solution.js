@@ -10,10 +10,6 @@
 	2. possibly mod so grid 16 by 16 instead of 32 by 32
 	3. in edge cases, go back upstairs right away
 
-
-	EDGE CASES:
-		1. block already exists on stair (initial spawn): go down 1 and place it
-		2. block 1,1 exists -> need to re ascend and place on stair 7 
 */
 	
 //
@@ -151,8 +147,12 @@ this.turn = function(cell){
 	visitedMap[curX][curY] = true;
 
 	//find a direction that works
-	curDir = this.checkDir(cell, curDir, 0);
-
+	if (goal == FINDTOWER) {
+		curDir = this.checkDir(cell, curDir, 0);
+	}
+	else if (goal == FINDBLOCK) {
+		curDir = this.checkDirRandom(cell, [LEFT, UP, RIGHT, DOWN]);
+	}
 	if (curDir == STUCK) {			//we need to backtrack the previous way
 
 		//NOTE: if stack is empty: can't backtrack, just hit all 4 directions
@@ -195,7 +195,6 @@ this.createMap = function() {
 
 this.move = function(direction) {
 	if (backtracked == false) {
-		// console.log("curX: " + curX + "curY: " + curY)
 		backtrackStack.push(curDir);	//in case we need to backtrack (but don't add if we backtracked to get here)
 	}
 	else {	//no need to push to stack here
@@ -241,7 +240,40 @@ this.goodSpot = function(xPos, yPos, type) {		//checks if wall exists at spot or
 	return true;
 }
 
+this.checkDirRandom = function(cell, dirArray) {	//GOES IN DIFFERNT DIRECTION EVERY TIME (FINDS BLOCKS BETTER)
+	if (dirArray.length == 0) {		//base case: all 4 directions invalid
+		return STUCK;
+	}
 
+	var index = Math.random() * dirArray.length >> 0;	//generate random index
+	var dir = dirArray.splice(index, 1)[0];			//retrive direction and remove it from array
+
+	if (dir == LEFT) {
+		if (this.goodSpot(curX - 1, curY, cell.left.type) == true) {
+			return LEFT;
+		}
+	}
+	if (dir == UP) {
+		if (this.goodSpot(curX, curY + 1, cell.up.type) == true) {
+			return UP;
+		}
+	}
+
+	if (dir == DOWN) {
+		if (this.goodSpot(curX, curY - 1, cell.down.type) == true) {
+			return DOWN;
+		}
+	}
+	if (dir == RIGHT) {
+		if (this.goodSpot(curX + 1, curY, cell.right.type) == true) {
+			return RIGHT;
+		}
+	}
+
+	return this.checkDirRandom(cell, dirArray);	//try again with last attempted direction removed
+
+
+}
 
 
 this.checkDir = function(cell, dir, attempt) {
