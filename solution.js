@@ -8,8 +8,14 @@
 *	Optimization TODO:
 	1. instead of going one way on wall, go random way (create array & generate random value)
 	2. possibly mod so grid 16 by 16 instead of 32 by 32
-*/
+	3. in edge cases, go back upstairs right away
 
+
+	EDGE CASES:
+		1. block already exists on stair (initial spawn): go down 1 and place it
+		2. block 1,1 exists -> need to re ascend and place on stair 7 
+*/
+	
 //
 
 
@@ -30,13 +36,18 @@ prev = -1,
 towerX = -1,
 towerY = -1;
 
-
+//placing the stairs
+var 
+nextStair = 7;
+curLevel = 1;
+minStair = 1;
 
 //booleans
 var 
 firstTurn = true,
 backtracked = false,
-towerFound = false;
+towerFound = false,
+holdingBlock = false;
 
 //staircase booleans
 var 
@@ -95,6 +106,7 @@ this.turn = function(cell){
 				towerX = curX;
 				towerY = curY + 1;
 			}
+			towerFound = true;
 			goal = DOWNSTAIRS;
 		}
 
@@ -107,9 +119,25 @@ this.turn = function(cell){
 	if (goal == FINDBLOCK) {	//check if we've found a square
 		if (cell.type == BLOCK) {
 			goal = BACKTRACK;
-			curDir = -2;
+			holdingBlock = true;
 			return "pickup";
 		}
+	}
+
+	if (goal == BACKTRACK) {
+		if (backtrackStack.length == 0) {	//means we are on stair 1 so break
+			goal = UPSTAIRS;
+		}
+		else {
+			backtracked = true;
+			prev = backtrackStack.pop();
+			curDir = this.oppositeDir(prev);
+			return this.move(curDir);
+		}
+	}
+
+	if (goal == UPSTAIRS) {//71 61 51 41 31 21 11 72 62 52 42 32 22 73
+		return this.goUpStairs(cell.level);
 	}
 
 
@@ -189,6 +217,7 @@ this.move = function(direction) {
 
 	if (direction == -1) {
 		console.log("INVALID MOVE: -1");
+		curDir = -2;
 		return "drop";
 	}
 }
@@ -302,20 +331,68 @@ this.goDownStairs = function() {
 		case 2:
 			return this.move(RIGHT);
 		case 1: 						//bottom of the stairs (our goal)
+			
+			if (holdingBlock == true) {		//edge case: prev stair already on right level so block not placed
+				goal = UPSTAIRS;
+				return this.move(DOWN);	//throw away the turn (impossible to move to tower)
+			}
+
 			goal = FINDBLOCK;
 			//recreate visited grid and backtrack Array, not allowing visit of spots around towers
 			this.createMap();
-			this.backtrackStack = Array();
 
+			backtrackStack = Array();
 			//update location
 			curX = towerX;
 			curY = towerY + 1;
 			//we can go either right or up from this spot (random between 1 or 2)
 			curDir = (Math.random() * 2 >> 0) + 1;
-
 			return this.move(curDir);
 		default:
 			console.log("Not on stairs: shouldn't happen");
+			return this.move(-1);
+	}
+}
+
+this.goUpStairs = function(level) {
+	var curStair = this.getStair();
+	//check if this is the stair we are looking for
+	if (curStair == nextStair) {	
+		var tempStair = curStair;
+		var tempLevel = curLevel;
+		nextStair = curStair - 1;
+		if (nextStair == minStair - 1) {	//time to move onto next level
+			nextStair = 7;
+			curLevel += 1;	
+			minStair += 1;	//one less stair needs to be created on this level
+		}
+		goal = DOWNSTAIRS;	//next move is to go down stairs again
+
+		//check if level already exists (would only happen with level 1)
+		if (level == curLevel) {
+			return "pickup";	//just waste the turn (impossible to pick up)
+		}
+		else {
+			holdingBlock = false;
+			return "drop";
+		}
+	}
+
+	switch(curStair){
+		case 1:
+			return this.move(LEFT);
+		case 2:
+			return this.move(DOWN);
+		case 3:
+			return this.move(DOWN);
+		case 4: 
+			return this.move(RIGHT);
+		case 5:
+			return this.move(RIGHT);
+		case 6:
+			return this.move(UP);
+		default: 					//we should never hit this 
+			console.log("Can't ascend any more");
 			return this.move(-1);
 	}
 }
