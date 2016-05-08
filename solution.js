@@ -25,16 +25,16 @@ GOLD = 3;
 
 var 
 backtrackStack=new Array(),		//used as stack (push/pop methods)
-visitedMap = new Array(32),
-curX = 16,
+visitedMap = new Array(32),		//our map for visited cells
+curX = 16,						//starting location: (16, 16)
 curY = 16,
-prev = -1,
+prev = -1,						//for backtracking
 towerX = -1,
 towerY = -1;
 
 //placing the stairs
 var 
-nextStair = 7;
+nextStair = 7;				
 curLevel = 1;
 minStair = 1;
 
@@ -45,10 +45,6 @@ backtracked = false,
 towerFound = false,
 holdingBlock = false;
 
-//staircase booleans
-var 
-upStairs = false,
-downStairs = false;
 
 //direction representation
 var 
@@ -73,17 +69,19 @@ goal = FINDTOWER;
 
 // Replace this with your own wizardry
 this.turn = function(cell){
-	if (curDir == -2) {
-		return "drop";
+
+	if (curDir == -2) {		//default error case: Would break here but don't know how in js, so I just keep throwing away the turn. Should never happen.
+		console.log("Incorrect Direction Error");
+		return "drop";	//throw away move
 	}
 	if (goal == FINDTOWER) {
-		if (firstTurn == true) {
-			this.createMap();			//need to create visited map
+		if (firstTurn == true) {		
+			this.createMap();			//need to create visited map on first turn
 			firstTurn = false;
-			curDir = Math.random() * 4 >> 0;
+			curDir = Math.random() * 4 >> 0;	//start in random direction
 		}
 
-		if (cell.left.type == GOLD || cell.right.type == GOLD || 
+		if (cell.left.type == GOLD || cell.right.type == GOLD || 	//located the tower
 			cell.down.type == GOLD || cell.up.type == GOLD) {
 			if (cell.left.type == GOLD) {
 				towerX = curX - 1;
@@ -102,7 +100,7 @@ this.turn = function(cell){
 				towerY = curY + 1;
 			}
 			towerFound = true;
-			goal = DOWNSTAIRS;
+			goal = DOWNSTAIRS;	
 		}
 
 	}
@@ -123,7 +121,7 @@ this.turn = function(cell){
 		if (backtrackStack.length == 0) {	//means we are on stair 1 so break
 			goal = UPSTAIRS;
 		}
-		else {
+		else {							//go back to previous spot
 			backtracked = true;
 			prev = backtrackStack.pop();
 			curDir = this.oppositeDir(prev);
@@ -131,12 +129,12 @@ this.turn = function(cell){
 		}
 	}
 
-	if (goal == UPSTAIRS) {//71 61 51 41 31 21 11 72 62 52 42 32 22 73
+	if (goal == UPSTAIRS) {		//go up stairs and place block accordingly
 		return this.goUpStairs(cell.level);
 	}
 
 
-	if (goal == GRABTHEGOLD) {
+	if (goal == GRABTHEGOLD) {		//on step 7
 		console.log("Troll wins!");
 		return "left";
 	}
@@ -144,24 +142,20 @@ this.turn = function(cell){
 
 
 
-	visitedMap[curX][curY] = true;
+	visitedMap[curX][curY] = true;			//mark current spot as visited
 
-	//find a direction that works
-	if (goal == FINDTOWER) {
-		curDir = this.checkDir(cell, curDir, 0);
-	}
-	else if (goal == FINDBLOCK) {
-		curDir = this.checkDirRandom(cell, [LEFT, UP, RIGHT, DOWN]);
-	}
+	
+	//find next valid direction
+	curDir = this.checkDirRandom(cell, [LEFT, UP, RIGHT, DOWN]);
+
+
 	if (curDir == STUCK) {			//we need to backtrack the previous way
 
 		//NOTE: if stack is empty: can't backtrack, just hit all 4 directions
 		prev = backtrackStack.pop();
-		// console.log("stuck: " + prev);
 		curDir = this.oppositeDir(prev);
 		backtracked = true;
 	}
-	// console.log("about to move: " + curDir);
 	return this.move(curDir);
 
 }
@@ -170,7 +164,7 @@ this.turn = function(cell){
 
 
 
-this.createMap = function() {
+this.createMap = function() {		//2d 32 by 32 array
 	for (var i = 0; i < 32; i++) {
 		visitedMap[i] = new Array(32);
 		for (var j = 0; j < 32; j++) {
@@ -197,11 +191,11 @@ this.move = function(direction) {
 	if (backtracked == false) {
 		backtrackStack.push(curDir);	//in case we need to backtrack (but don't add if we backtracked to get here)
 	}
-	else {	//no need to push to stack here
+	else {	//don't want to push to stack here, just move to spot
 		backtracked = false;
 	}
 
-
+	//update location and move troll
 	if (direction == LEFT) {
 		curX --;
 		return "left";
@@ -218,7 +212,7 @@ this.move = function(direction) {
 		curX ++;
 		return "right";
 	}
-
+	//should never hit this
 	if (direction == -1) {
 		console.log("INVALID MOVE: -1");
 		curDir = -2;
@@ -248,6 +242,7 @@ this.checkDirRandom = function(cell, dirArray) {	//GOES IN DIFFERNT DIRECTION EV
 	var index = Math.random() * dirArray.length >> 0;	//generate random index
 	var dir = dirArray.splice(index, 1)[0];			//retrive direction and remove it from array
 
+	//check if direction is valid: if yes, troll will move that way
 	if (dir == LEFT) {
 		if (this.goodSpot(curX - 1, curY, cell.left.type) == true) {
 			return LEFT;
@@ -276,6 +271,7 @@ this.checkDirRandom = function(cell, dirArray) {	//GOES IN DIFFERNT DIRECTION EV
 }
 
 
+//////////*OLD TRAVERSAL METHOD: NO LONGER BEING USED*//////////////////
 this.checkDir = function(cell, dir, attempt) {
 	if (attempt == 4) {		//tried all 4 directions, need to backtrack
 		return STUCK;
@@ -304,11 +300,11 @@ this.checkDir = function(cell, dir, attempt) {
 
 	return this.checkDir(cell, (dir + 1) % 4, attempt + 1);
 }
+////////////////////////////////////////////////////////////////////
 
 
 
-
-this.oppositeDir = function(dir) {
+this.oppositeDir = function(dir) {	//get opposite direction (for backtracking)
 	switch(dir){
 		case LEFT :
 			return RIGHT;
@@ -318,8 +314,8 @@ this.oppositeDir = function(dir) {
 			return UP;
 		case RIGHT: 
 			return LEFT;
-		default:
-			console.log("Invalid CURDIR: THIS SHOULDN'T HAPPEN): " + dir);
+		default:  		//should never hit here
+			console.log("Invalid direction: " + dir);
 			return -1;
 	}
 }
@@ -424,7 +420,7 @@ this.goUpStairs = function(level) {
 		}
 	}
 
-	//not on right stair: we need to go up 
+	//not on desired stair: we need to go up 
 	switch(curStair){
 		case 1:
 			return this.move(LEFT);
@@ -438,6 +434,7 @@ this.goUpStairs = function(level) {
 			return this.move(RIGHT);
 		case 6:
 			return this.move(UP);
+		//if we were on stair 7, we would have already returned
 		default: 					//we should never hit this 
 			console.log("Can't ascend any more");
 			return this.move(-1);
